@@ -98,12 +98,9 @@ class GenericLLMProvider:
             llm = ChatGroq(**kwargs)
         elif provider == "bedrock":
             _check_pkg("langchain_aws")
-            from langchain_aws import ChatBedrock
+            from langchain_aws import ChatBedrockConverse
 
-            if "model" in kwargs or "model_name" in kwargs:
-                model_id = kwargs.pop("model", None) or kwargs.pop("model_name", None)
-                kwargs = {"model_id": model_id, "model_kwargs": kwargs}
-            llm = ChatBedrock(**kwargs)
+            llm = ChatBedrockConverse(**kwargs)
         elif provider == "dashscope":
             _check_pkg("langchain_dashscope")
             from langchain_dashscope import ChatDashScope
@@ -140,6 +137,14 @@ class GenericLLMProvider:
         async for chunk in self.llm.astream(messages):
             content = chunk.content
             if content is not None:
+
+                # Support for LLM where `content` becomes a list (e.g. bedrock using Amazon Nova models)
+                if type(content) == list:
+                    if len(content) > 0 and "text" in content[0]:
+                        content = content[0]["text"]
+                    else:
+                        continue
+
                 response += content
                 paragraph += content
                 if "\n" in paragraph:
