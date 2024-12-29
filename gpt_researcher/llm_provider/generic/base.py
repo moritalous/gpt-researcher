@@ -98,23 +98,9 @@ class GenericLLMProvider:
             llm = ChatGroq(**kwargs)
         elif provider == "bedrock":
             _check_pkg("langchain_aws")
-            from typing import Iterable
             from langchain_aws import ChatBedrockConverse
-            from langchain_core.runnables import RunnableGenerator
-            from langchain_core.messages import AIMessageChunk, BaseMessage
 
-            def streaming_parse(chunks: Iterable[BaseMessage]) -> Iterable[str]:
-                for chunk in chunks:
-                    if isinstance(chunk, AIMessageChunk):
-                        if len(chunk.content) > 0 and "text" in chunk.content[0]:
-                            chunk.content = chunk.content[0]["text"]
-                        else:
-                            chunk.content = ""
-                    yield chunk
-
-            streaming_parse = RunnableGenerator(streaming_parse)
-
-            llm = ChatBedrockConverse(**kwargs) | streaming_parse
+            llm = ChatBedrockConverse(**kwargs)
         elif provider == "dashscope":
             _check_pkg("langchain_dashscope")
             from langchain_dashscope import ChatDashScope
@@ -150,7 +136,14 @@ class GenericLLMProvider:
         # Streaming the response using the chain astream method from langchain
         async for chunk in self.llm.astream(messages):
             content = chunk.content
+                        
             if content is not None:
+                if type(content) is list:
+                    if len(content) > 0 and "text" in content[0]:
+                        content = content[0]["text"]
+                    else:
+                        content = ""
+
                 response += content
                 paragraph += content
                 if "\n" in paragraph:
